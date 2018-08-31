@@ -1,3 +1,4 @@
 .direnv/
 /.envrc
 datasets/
+__pycache__/
