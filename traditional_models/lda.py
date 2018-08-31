@@ -49,22 +49,22 @@ n_features = 1000
 n_components = 10
 n_top_words = 20
 
-tfidf_vectorizer = TfidfVectorizer(
-    max_df=0.95, min_df=2, max_features=n_features, stop_words="english")
 
-tfidf = tfidf_vectorizer.fit_transform(data)
-logging.info("tf-idf vectorizer completed in {} seconds".format(time() - t0))
+count_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features, stop_words='english')
+tf = count_vectorizer.fit_transform(data)
+
+logging.info("count vectorizer completed in {} seconds".format(time() - t0))
 
 logging.info("Fitting LDA model with tf features, n_features={}".format(n_features))
 t0 = time()
 
-lda = LatentDirichletAllocation(n_components=n_components, max_iter=5,
+lda = LatentDirichletAllocation(n_components=n_components, max_iter=50,
                                 learning_method='online',
                                 learning_offset=50.,
                                 random_state=0)
-lda.fit(tfidf)
+lda.fit(tf)
 logging.info("done in %0.3fs." % (time() - t0))
 
 print("\nTopics in Topic Model:")
-tf_feature_names = tfidf_vectorizer.get_feature_names()
+tf_feature_names = count_vectorizer.get_feature_names()
 print_top_words(lda, tf_feature_names, n_top_words)
