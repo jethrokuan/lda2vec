@@ -2,89 +2,103 @@
 
 from collections import Counter
 import numpy as np
-import re
-from tqdm import tqdm
 import spacy
+import tensorflow as tf
+from spacy.attrs import LOWER, LIKE_URL, LIKE_EMAIL, IS_OOV, IS_PUNCT
 
-def preprocess(docs,
-               min_word_count,
-               max_word_count,
-               min_word_length,
-               max_doc_length,
-               min_doc_length):
-    """Tokenize, clean andd encode documents.
 
-    Args:
-        docs (tuple): A list of tuples (document_id, document_text).
-        min_word_count (int): the minimum count for a word.
-        max_word_count (int): the maximum count for a word.
-        min_doc_length (int): the minimum document length.
+class NlpPipeline(object):
+    def __init__(self,
+                 documents,
+                 max_length=10000,
+                 skip_token="<SKIP>",
+                 oov_token="<OOV>"):
+        self.documents = documents
+        self.num_documents = len(documents)
+        self.max_length = max_length
+        self.nlp = spacy.load("en_core_web_sm")
 
-    Returns:
-        encoded_docs (tuple): A list of tuples (document_id, [int]), with the
-           list of int representing words in the document.
-        id2word (dict): Dictionary mapping index to word.
-        word_counts ([int]): word_counts[i] gives the number of occurences
-           of word id2word[i].
-    """
-    nlp = spacy.load("en")
+        # Add the skip_token and oov_token
+        self.skip_token = skip_token
+        self.oov_token = oov_token
+        self.nlp.vocab.strings.add(skip_token)
+        self.nlp.vocab.strings.add(oov_token)
+        self.skip = self.nlp.vocab.strings[skip_token]
+        self.oov = self.nlp.vocab.strings[oov_token]
 
-    def clean_and_tokenize(doc):
-        text = ' '.join(doc.split())  # remove excessive spaces
-        text = nlp(text)
-        return [
-            t.lemma_ for t in text
-            if t.is_alpha and len(t) > 2 and not t.is_stop
-        ]
+        # Initialize tokenized_docs
+        self.tokenized_docs = np.zeros(
+            ((len(self.documents), max_length)), dtype=np.uint64)
+        self.tokenized_docs[:] = self.skip
 
-    def _count_unique_tokens(tokenized_docs):
-        tokens = []
-        for i, doc in tokenized_docs:
-            tokens += doc
-        return Counter(tokens)
+    def _merge_doc(self, doc, bad_deps=["amod", "compound"]):
+        for phrase in doc.noun_chunks:
+            while len(phrase) > 1 and phrase[0].dep_ not in bad_deps:
+                phrase = phrase[1:]
+            if len(phrase) > 1:
+                phrase.merge(
+                    tag=phrase.root.tag_,
+                    lemma=phrase.text,
+                    ent_type=phrase.root.ent_type_)
+        for ent in doc.ents:
+            if len(ent) > 1:
+                doc.merge(
+                    start_idx=ent[0].idx,
+                    end_idx=ent[-1].idx,
+                    tag=ent.root.tag_,
+                    lemma="_".join([token.text for token in ent]),
+                    ent_type=ent[0].ent_type_)
 
-    def _remove_tokens(tokenized_docs, min_count, max_count):
-        tokens = [token for _, doc in tokenized_docs for token in doc]
-        counter = Counter(tokens)
-        keep = {}
-        for token, count in counter.most_common():
-            keep[token] = count >= min_count or count <= max_count
+        # for token in doc:
+        #     print(token)
+        #     text = token.text.replace(" ", "_")
+        #     if token.is_oov:
+        #         print(token.lower_)
+        #         self.nlp.vocab.strings.add(token.lower_)
 
-        return [(i, [t for t in doc if keep[t]]) for i, doc in tokenized_docs]
+        return doc
 
-    def _create_dictionary(tokenized_docs):
-        tokens = [token for _, doc in tokenized_docs for token in doc]
-        counter = Counter(tokens)
-        id2word = {}
-        word2id = {}
-        word_counts = []
+    def tokenize(self):
+        for row, document in enumerate(self.nlp.pipe(self.documents)):
+            document = self._merge_doc(document)
+            a = []
+            data = document.to_array(
+                [LOWER, LIKE_EMAIL, LIKE_URL, IS_OOV, IS_PUNCT])
+            if len(data) > 0:
+                # Indices to replace with skip token
+                # TODO: some issues with is_oov on models
+                skip_idx = (data[:, 1] > 0) | (data[:, 2] > 0)
 
-        i = 0
-        for token, count in counter.most_common():
-            word2id[token] = i
-            id2word[i] = token
-            word_counts.append(count)
-            i += 1
+                # oov_idx = (data[:, 3] > 0)
 
-        return word2id, id2word, word_counts
+                data[skip_idx] = self.skip
+                # data[oov_idx] = self.oov
 
-    def _encode_doc(doc, word2id):
-        return [word2id[w] for w in doc]
+                # Delete punctuation
+                data = np.delete(data, np.where(data[:, 4] == 1), 0)
+                length = min(len(data), self.max_length)
+                self.tokenized_docs[row, :length] = data[:length, 0].ravel()
+        uniques = np.unique(self.tokenized_docs.ravel())
+        self.vocab = {v: self.nlp.vocab[v].lower_ for v in uniques}
+        self.vocab[self.skip] = self.skip_token
+        # self.vocab[self.oov] = self.oov_token
 
-    tokenized_docs = [(i, clean_and_tokenize(doc)) for i, doc in docs]
+    def initialize_embedding_matrix(self, embed_size=256):
+        self.embed_matrix = np.random.uniform(-1, 1,
+                                              [len(self.vocab), embed_size])
+        embed_matrix_tensor = tf.convert_to_tensor(self.embed_matrix)
+        self.embed_matrix_tensor = tf.Variable(embed_matrix_tensor)
 
-    # remove short documents
-    tokenized_docs = [(i, doc) for i, doc in tokenized_docs
-                      if len(doc) >= min_doc_length]
-
-    # remove frequent and infrequent tokens, and remove documents again
-    tokenized_docs = _remove_tokens(tokenized_docs, min_word_count,
-                                    max_word_count)
-    tokenized_docs = [(i, doc) for i, doc in tokenized_docs
-                      if len(doc) >= min_doc_length]
-
-    word2id, id2word, word_counts = _create_dictionary(tokenized_docs)
-
-    encoded_docs = [(i, _encode_doc(doc, word2id))
-                    for i, doc in tokenized_docs]
-    return encoded_docs, id2word, word_counts
+    def compact_documents(self):
+        uniques, self.token_counts = np.unique(
+            self.tokenized_docs.ravel(), return_counts=True)
+        frequencies, hash_ids = zip(*(
+            (c, x)
+            for c, x in sorted(zip(self.token_counts, uniques), reverse=True)))
+        word_ids = np.arange(len(hash_ids))
+        self.hash_to_idx = dict(zip(hash_ids, word_ids))
+        self.idx_to_hash = dict(zip(word_ids, hash_ids))
+        self.idx_to_word = {i: self.vocab[self.idx_to_hash[i]] for i in word_ids}
+        self.word_to_idx = {v: k for k, v in self.idx_to_word.items()}
+        self.compact_docs = np.vectorize(self.hash_to_idx.get)(
+            self.tokenized_docs)

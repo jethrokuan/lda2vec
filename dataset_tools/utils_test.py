@@ -12,7 +12,7 @@ class DatasetToolsUtilsTest(unittest.TestCase):
 
     def test_read_file(self):
         lines = read_file(self.test_text_file)
-        self.assertEqual(lines, [(0, "hello"), (1, "there")])
+        self.assertEqual(lines, ["hello", "there"])
 
 
 if __name__ == "__main__":

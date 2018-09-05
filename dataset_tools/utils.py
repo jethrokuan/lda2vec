@@ -10,5 +10,4 @@ def read_file(file_path):
     Returns:
         [lines]: Array of lines for the text file."""
     with open(file_path) as fp:
-        lines = fp.read().splitlines()
-        return [(i, line) for i, line in enumerate(lines)]
+        return fp.read().splitlines()
