@@ -1,7 +1,7 @@
 CORPUS="datasets/twenty_newsgroups.txt"
 EXPERIMENT_DIR="experiments/twenty_newsgroups/"
 
-from keras.preprocessing.sequence import skipgrams
+from tensorflow.python.keras.preprocessing.sequence import skipgrams
 
 from dataset_tools.utils import read_file
 from dataset_tools.preprocess import NlpPipeline
