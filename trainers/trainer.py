@@ -18,6 +18,7 @@ class BaseTrainer(object):
            data_loader: The data loader. Defaults to None.
         """
 
+        self.sess = sess
         self.model = model
         self.config = config
         self.logger = logger
@@ -28,7 +29,7 @@ class BaseTrainer(object):
     def train(self):
         """This is the main loop for training the model."""
         for cur_epoch in range(self.model.cur_epoch_tensor.eval(self.sess),
-                               self.config.num_epochs + 1):
+                               self.config["num_epochs"] + 1):
             self.train_epoch(cur_epoch)
             self.sess.run(self.model.increment_cur_epoch_op)
 

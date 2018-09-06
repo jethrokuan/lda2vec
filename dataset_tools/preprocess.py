@@ -83,12 +83,6 @@ class NlpPipeline(object):
         self.vocab[self.skip] = self.skip_token
         # self.vocab[self.oov] = self.oov_token
 
-    def initialize_embedding_matrix(self, embed_size=256):
-        self.embed_matrix = np.random.uniform(-1, 1,
-                                              [len(self.vocab), embed_size])
-        embed_matrix_tensor = tf.convert_to_tensor(self.embed_matrix)
-        self.embed_matrix_tensor = tf.Variable(embed_matrix_tensor)
-
     def compact_documents(self):
         uniques, self.token_counts = np.unique(
             self.tokenized_docs.ravel(), return_counts=True)
@@ -98,7 +92,10 @@ class NlpPipeline(object):
         word_ids = np.arange(len(hash_ids))
         self.hash_to_idx = dict(zip(hash_ids, word_ids))
         self.idx_to_hash = dict(zip(word_ids, hash_ids))
-        self.idx_to_word = {i: self.vocab[self.idx_to_hash[i]] for i in word_ids}
+        self.idx_to_word = {
+            i: self.vocab[self.idx_to_hash[i]]
+            for i in word_ids
+        }
         self.word_to_idx = {v: k for k, v in self.idx_to_word.items()}
         self.compact_docs = np.vectorize(self.hash_to_idx.get)(
             self.tokenized_docs)
