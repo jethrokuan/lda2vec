@@ -11,15 +11,19 @@ from models.model import BaseModel
 
 class Lda2Vec(BaseModel):
     def __init__(self, config, hparams):
+        """Constructor for Lda2Vec model.
+
+        Args:
+            config: Settings for model training and evaluation.
+            hparams: a tf HParams object.
+        """
         super(Lda2Vec, self).__init__(config)
         self.config = config
         self.hparams = hparams
         self.build_graph()
         self.init_saver()
 
-    def dirichlet_likelihood(self, weights, alpha=None):
-        if alpha is None:
-            alpha = 1.0 / self.hparams["num_topics"]
+    def dirichlet_likelihood(self, weights, alpha):
         log_proportions = tf.nn.log_softmax(weights)
         loss = (alpha - 1.0) * log_proportions
         return tf.reduce_sum(loss)
@@ -37,7 +41,7 @@ class Lda2Vec(BaseModel):
         with tf.name_scope("{}_Topics".format(name)):
             topic_embedding = tf.get_variable(
                 "{}_topic_embedding".format(name),
-                shape=[self.hparams["num_topics"], embedding_size],
+                shape=[self.hparams.num_topics, embedding_size],
                 dtype=tf.float32,
                 initializer=tf.orthogonal_initializer(gain=scalar))
 
@@ -57,7 +61,7 @@ class Lda2Vec(BaseModel):
 
         word_embeddings = tf.Variable(
             tf.random_uniform(
-                [self.hparams["vocabulary_size"], self.hparams["embedding_size"]], -1.0,
+                [self.hparams.vocabulary_size, self.hparams.embedding_size], -1.0,
                 1.0),
             name="word_embedding")
 
@@ -65,8 +69,8 @@ class Lda2Vec(BaseModel):
             word_embeddings, self.train_inputs, name="word_context")
 
         document_embedding, topic_embedding = self._embed_mixture(
-            self.config["num_documents"], self.hparams["num_topics"],
-            self.hparams["embedding_size"], name="document")
+            self.config["num_documents"], self.hparams.num_topics,
+            self.hparams.embedding_size, name="document")
 
         document_proportions = tf.nn.embedding_lookup(
             document_embedding,
@@ -74,7 +78,7 @@ class Lda2Vec(BaseModel):
             name="{}_doc_proportions".format("document"))
 
         document_proportions = tf.nn.softmax(
-            document_proportions / self.hparams["temperature"], name="document_softmax")
+            document_proportions / self.hparams.temperature, name="document_softmax")
 
         document_context = tf.matmul(document_proportions,
                                      topic_embedding, name="document_context")
@@ -87,12 +91,12 @@ class Lda2Vec(BaseModel):
             nce_weights = tf.Variable(
                 tf.truncated_normal(
                     [
-                        self.hparams["vocabulary_size"],
-                        self.hparams["embedding_size"]
+                        self.hparams.vocabulary_size,
+                        self.hparams.embedding_size
                     ],
-                    stddev=tf.sqrt(1 / self.hparams["embedding_size"])),
+                    stddev=tf.sqrt(1 / self.hparams.embedding_size)),
                 name="nce_weights")
-            nce_biases = tf.Variable(tf.zeros([self.hparams["vocabulary_size"]]), name="nce_biases")
+            nce_biases = tf.Variable(tf.zeros([self.hparams.vocabulary_size]), name="nce_biases")
             train_labels = tf.reshape(self.train_labels,
                                        [tf.shape(self.train_labels)[0], 1])
             loss_nce = tf.reduce_mean(
@@ -101,18 +105,20 @@ class Lda2Vec(BaseModel):
                     biases=nce_biases,
                     labels=train_labels,
                     inputs=context,
-                    num_sampled=self.hparams["negative_samples"],
-                    num_classes=self.hparams["vocabulary_size"],
+                    num_sampled=self.hparams.negative_samples,
+                    num_classes=self.hparams.vocabulary_size,
                     num_true=1,
                     sampled_values=None))
 
         with tf.variable_scope("lda_loss"):
             fraction = tf.Variable(
                 1, trainable=False, dtype=tf.float32, name="fraction")
-            loss_lda = self.hparams["alpha"] * fraction * self.dirichlet_likelihood(
-                document_embedding)
+            loss_lda = self.hparams.alpha * fraction * self.dirichlet_likelihood(
+                document_embedding, self.hparams.alpha)
 
-        self.loss = loss_nce + loss_lda
+        with tf.variable_scope("total_loss"):
+            self.loss = loss_nce + loss_lda
+
         self.train_step = tf.train.AdamOptimizer(
-            self.hparams["learning_rate"]).minimize(
+            self.hparams.learning_rate).minimize(
                 self.loss, global_step=self.global_step_tensor)

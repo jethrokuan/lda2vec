@@ -21,8 +21,8 @@ class Word2Vec(BaseModel):
             with tf.name_scope("embeddings"):
                 embeddings = tf.Variable(
                     tf.random_uniform([
-                        self.hparams["vocabulary_size"],
-                        self.hparams["embedding_size"]
+                        self.hparams.vocabulary_size,
+                        self.hparams.embedding_size
                     ], -1.0, 1.0))
                 self.embed = tf.nn.embedding_lookup(embeddings,
                                                     self.train_inputs)
@@ -31,13 +31,13 @@ class Word2Vec(BaseModel):
             nce_weights = tf.Variable(
                 tf.truncated_normal(
                     [
-                        self.hparams["vocabulary_size"],
-                        self.hparams["embedding_size"]
+                        self.hparams.vocabulary_size,
+                        self.hparams.embedding_size
                     ],
-                    stddev=1.0 / math.sqrt(self.hparams["embedding_size"])))
+                    stddev=1.0 / math.sqrt(self.hparams.embedding_size)))
         with tf.name_scope("biases"):
             nce_biases = tf.Variable(
-                tf.zeros([self.hparams["vocabulary_size"]]))
+                tf.zeros([self.hparams.vocabulary_size]))
 
         with tf.name_scope("loss"):
             train_labels_reshaped = tf.reshape(
@@ -48,9 +48,9 @@ class Word2Vec(BaseModel):
                     biases=nce_biases,
                     labels=train_labels_reshaped,
                     inputs=self.embed,
-                    num_sampled=self.hparams["negative_samples"],
-                    num_classes=self.hparams["vocabulary_size"],
+                    num_sampled=self.hparams.negative_samples,
+                    num_classes=self.hparams.vocabulary_size,
                     name="nce_loss"))
             self.train_step = tf.train.AdamOptimizer(
-                self.hparams["learning_rate"]).minimize(
+                self.hparams.learning_rate).minimize(
                     self.loss, global_step=self.global_step_tensor)
