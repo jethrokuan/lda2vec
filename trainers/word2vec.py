@@ -15,10 +15,14 @@ class Word2VecTrainer(BaseTrainer):
             self.config["file_path"],
             [tf.int32, tf.int32, tf.int32],
             header=True)
-        self.dataset = self.dataset.shuffle(buffer_size=1000).repeat().batch(
-            self.config["batch_size"])
-        it = self.dataset.make_one_shot_iterator()
-        self.next_batch = it.get_next()
+        self.dataset = self.dataset.apply(
+            tf.contrib.data.shuffle_and_repeat(
+                buffer_size = 100 * self.config["batch_size"]
+            )
+        )
+
+        self.next_batch = self.dataset.make_one_shot_iterator().get_next()
+
 
     def train_epoch(self, epoch):
         loss_per_epoch = AverageMeter()
