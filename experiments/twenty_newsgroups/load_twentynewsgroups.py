@@ -1,6 +1,7 @@
 import pickle
 
 import numpy as np
+import json
 import pandas as pd
 from tensorflow.python.keras.preprocessing.sequence import skipgrams
 
@@ -48,4 +49,12 @@ with open("{}/idx_to_word.pickle".format(EXPERIMENT_DIR), "wb") as fp:
 with open("{}/word_to_idx.pickle".format(EXPERIMENT_DIR), "wb") as fp:
     pickle.dump(pipeline.word_to_idx, fp)
 
-print(len(pipeline.vocab))
+with open("{}/word_embedding_metadata.tsv".format(EXPERIMENT_DIR), "w") as fp:
+    words = sorted(pipeline.idx_to_word.items())
+    for _, word in words:
+        fp.write("{}\n".format(word))
+
+with open("{}/corpus_meta".format(EXPERIMENT_DIR), "w") as fp:
+    json.dump({
+        "vocab_size": len(pipeline.vocab),
+    }, fp)

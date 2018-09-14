@@ -8,6 +8,6 @@ baseline = HParams(
     num_topics = 20,
     temperature = 1.0,
     alpha = 0.7,
-    vocabulary_size = 157164,
+    vocabulary_size = 26863,
     negative_samples = 64
 )

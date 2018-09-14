@@ -8,14 +8,14 @@ from utils.logger import Logger
 import models.hparams.word2vec as hparams
 
 import tensorflow as tf
-BASE_DIR = "/Users/jethrokuan/Documents/Code/hash-lda2vec/test/"
+BASE_DIR = "/Users/jethrokuan/Documents/Code/hash-lda2vec/word2vec/"
 
 CONFIG = {
     "summary_dir": "{}/summaries/".format(BASE_DIR),
     "checkpoint_dir": "{}/checkpoints/".format(BASE_DIR),
     "max_to_keep": 3,
     "batch_size": 50,
-    "file_path": "experiments/twenty_newsgroups/train_data.csv",
+    "file_path": "experiments/lorem_ipsum/train_data.csv",
     "num_epochs": 10000,
     "num_iter_per_epoch": 20,
 }

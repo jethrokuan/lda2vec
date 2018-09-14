@@ -7,7 +7,7 @@ from trainers.lda2vec import Lda2VecTrainer
 from utils.logger import Logger
 
 import tensorflow as tf
-BASE_DIR = "/Users/jethrokuan/Documents/Code/hash-lda2vec/test/"
+BASE_DIR = "/Users/jethrokuan/Documents/Code/hash-lda2vec/lda2vec/"
 
 CONFIG = {
     "summary_dir": "{}/summaries/".format(BASE_DIR),

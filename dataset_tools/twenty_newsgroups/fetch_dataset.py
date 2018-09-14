@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 _BAD_TEXT = set(["ax>", '`@("', '---', '===', '^^^', "AX>", "GIZ"])
 _NEWSGROUPS_REMOVE_SUBSET = ('headers', 'footers', 'quotes')
+_CATEGORIES = ['sci.med', 'soc.religion.christian',]
 
 parser = ArgumentParser()
 
@@ -43,7 +44,7 @@ if os.path.exists(args.file_path):
 
 logger.info("Downloading 20 newsgroups dataset...")
 os.makedirs(os.path.dirname(args.file_path), exist_ok=True)
-texts = fetch_20newsgroups(subset='train', remove=_NEWSGROUPS_REMOVE_SUBSET).data
+texts = fetch_20newsgroups(subset='train', categories=_CATEGORIES, remove=_NEWSGROUPS_REMOVE_SUBSET).data
 texts = [remove_from_line(line, _BAD_TEXT) for line in texts]
 
 with open(args.file_path, 'w+') as fp:
