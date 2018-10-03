@@ -57,4 +57,5 @@ with open("{}/word_embedding_metadata.tsv".format(EXPERIMENT_DIR), "w") as fp:
 with open("{}/corpus_meta".format(EXPERIMENT_DIR), "w") as fp:
     json.dump({
         "vocab_size": len(pipeline.vocab),
+        "doc_count": len(pipeline.compact_docs),
     }, fp)
