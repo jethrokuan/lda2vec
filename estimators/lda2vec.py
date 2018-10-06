@@ -106,6 +106,7 @@ COLUMN_NAMES = ["target", "doc_id"]
 
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
+    model_dir="built_models/lda2vec",
     params={
         "learning_rate": 0.01,
         "embedding_size": 256,
