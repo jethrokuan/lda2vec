@@ -98,6 +98,18 @@ def lda2vec_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(
             mode, loss=loss, train_op=train_op)
 
+    if mode == tf.estimator.ModeKeys.EVAL:
+        topic_embedding = tf.nn.l2_normalize(topic_embedding, 1)
+        word_embedding = tf.nn.l2_normalize(word_embedding, 1)
+        with tf.variable_scope("k_closest"):
+            indices = np.arange(params["num_topics"])
+            topic = tf.nn.embedding_lookup(topic_embedding, indices)
+            cosine_sim = tf.matmul(topic, tf.transpose(word_embedding, [1, 0]))
+            tf.Print(cosine_sim, [cosine_sim], "cosine_sim")
+            return tf.estimator.EstimatorSpec(
+                mode, loss=loss, eval_metric_ops={},
+            )
+
 my_feature_columns = []
 
 _VOCAB_SIZE = 26863
@@ -120,7 +132,10 @@ lda2vec = tf.estimator.Estimator(
     }
 )
 
-lda2vec.train(
-    lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),
-    steps=10000
+tf.estimator.train_and_evaluate(
+    lda2vec,
+    tf.estimator.TrainSpec(input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),
+                           max_steps=1000,),
+    tf.estimator.EvalSpec(input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096))
+
 )
