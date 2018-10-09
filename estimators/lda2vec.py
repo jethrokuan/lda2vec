@@ -127,8 +127,8 @@ lda2vec = tf.estimator.Estimator(
         "learning_rate": 0.01,
         "embedding_size": 256,
         "num_topics": 20,
-        "num_documents": 7532,
-        "lambda": 200,
+        "num_documents": 11314,
+        "lambda": 20,
         "temperature": 1.0,
         "alpha": 0.7,
         "vocabulary_size": _VOCAB_SIZE,
@@ -138,17 +138,17 @@ lda2vec = tf.estimator.Estimator(
 
 lda2vec.train(
     input_fn=lambda: train_input_fn("data/twenty_newsgroups/train.csv", 4096),
-    max_steps=10000,
+    max_steps=1000000,
 )
 
 predictions = lda2vec.predict(
-    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train.csv", 4096),)
+    input_fn=lambda: train_input_fn("data/twenty_newsgroups/train.csv", 4096),)
 
-import pickle
+import json
 
-with open("data/twenty_newsgroups/idx_to_word.pickle", "rb") as fp:
-    idx_to_word = pickle.load(fp)
+with open("data/twenty_newsgroups/idx2token.json", "r") as fp:
+     id2token= json.load(fp)
 
 for pred in predictions:
-    print(list(map(idx_to_word.get, pred["sim_idxs"])))
+    print(list(map(id2token.get, map(str, pred["sim_idxs"]))))
     exit
