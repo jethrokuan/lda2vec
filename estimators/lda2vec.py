@@ -40,6 +40,21 @@ def lda2vec_model_fn(features, labels, mode, params):
                 mean=0.0,
                 stddev= 50 * scalar))
 
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        predictions = {}
+        topic_embedding = tf.nn.l2_normalize(topic_embedding, 1)
+        word_embedding = tf.nn.l2_normalize(word_embedding, 1)
+        with tf.variable_scope("k_closest"):
+            indices = np.arange(params["num_topics"])
+            topic = tf.nn.embedding_lookup(topic_embedding, indices)
+            cosine_sim = tf.matmul(topic, tf.transpose(word_embedding, [1, 0]))
+            sim, sim_idxs = tf.nn.top_k(cosine_sim, k=10)
+            predictions["top_k"] = sim
+            predictions["sim_idxs"] = sim_idxs
+            return tf.estimator.EstimatorSpec(
+                mode, predictions=predictions
+            )
+
     word_context = tf.nn.embedding_lookup(
         word_embedding, features["target"], name="word_context")
 
@@ -98,17 +113,6 @@ def lda2vec_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(
             mode, loss=loss, train_op=train_op)
 
-    if mode == tf.estimator.ModeKeys.EVAL:
-        topic_embedding = tf.nn.l2_normalize(topic_embedding, 1)
-        word_embedding = tf.nn.l2_normalize(word_embedding, 1)
-        with tf.variable_scope("k_closest"):
-            indices = np.arange(params["num_topics"])
-            topic = tf.nn.embedding_lookup(topic_embedding, indices)
-            cosine_sim = tf.matmul(topic, tf.transpose(word_embedding, [1, 0]))
-            tf.Print(cosine_sim, [cosine_sim], "cosine_sim")
-            return tf.estimator.EstimatorSpec(
-                mode, loss=loss, eval_metric_ops={},
-            )
 
 my_feature_columns = []
 
@@ -132,10 +136,19 @@ lda2vec = tf.estimator.Estimator(
     }
 )
 
-tf.estimator.train_and_evaluate(
-    lda2vec,
-    tf.estimator.TrainSpec(input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),
-                           max_steps=1000,),
-    tf.estimator.EvalSpec(input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096))
-
+lda2vec.train(
+    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),
+    max_steps=10000,
 )
+
+predictions = lda2vec.predict(
+    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),)
+
+import pickle
+
+with open("experiments/twenty_newsgroups/idx_to_word.pickle", "rb") as fp:
+    idx_to_word = pickle.load(fp)
+
+for pred in predictions:
+    print(list(map(idx_to_word.get, pred["sim_idxs"])))
+    exit
