@@ -116,7 +116,7 @@ def lda2vec_model_fn(features, labels, mode, params):
 
 my_feature_columns = []
 
-_VOCAB_SIZE = 26863
+_VOCAB_SIZE = 20001
 
 COLUMN_NAMES = ["target", "doc_id"]
 
@@ -127,26 +127,26 @@ lda2vec = tf.estimator.Estimator(
         "learning_rate": 0.01,
         "embedding_size": 256,
         "num_topics": 20,
-        "num_documents": 1193,
+        "num_documents": 7532,
         "lambda": 200,
         "temperature": 1.0,
         "alpha": 0.7,
-        "vocabulary_size": 26863,
+        "vocabulary_size": _VOCAB_SIZE,
         "negative_samples": 15
     }
 )
 
 lda2vec.train(
-    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),
+    input_fn=lambda: train_input_fn("data/twenty_newsgroups/train.csv", 4096),
     max_steps=10000,
 )
 
 predictions = lda2vec.predict(
-    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train_data.csv", 4096),)
+    input_fn=lambda: train_input_fn("experiments/twenty_newsgroups/train.csv", 4096),)
 
 import pickle
 
-with open("experiments/twenty_newsgroups/idx_to_word.pickle", "rb") as fp:
+with open("data/twenty_newsgroups/idx_to_word.pickle", "rb") as fp:
     idx_to_word = pickle.load(fp)
 
 for pred in predictions:

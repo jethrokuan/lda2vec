@@ -47,14 +47,19 @@ df.to_csv("{}/train.csv".format(SAVE_DIR), index=False, header=True)
 total_count = sum(frequency.values())
 normalized_frequency = {k: v / total_count for k, v in frequency.items()}
 
-with open("{}/token_to_idx.json".format(SAVE_DIR), "w") as fp:
+with open("{}/token2idx.json".format(SAVE_DIR), "w") as fp:
     json.dump(dct.token2id, fp)
+
+id2token = {v: k for k, v in dct.token2id.items()}
+
+with open("{}/idx2token.json".format(SAVE_DIR), "w") as fp:
+    json.dump(id2token, fp)
 
 with open("{}/freq.json".format(SAVE_DIR), "w") as fp:
     json.dump(normalized_frequency, fp)
 
 with open("{}/meta.json".format(SAVE_DIR), "w") as fp:
     json.dump({
-        "vocab": len(token_to_idx),
+        "vocab": len(dct),
         "num_docs": len(tokenized_docs)
     }, fp)
