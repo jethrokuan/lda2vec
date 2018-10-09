@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 
 _BAD_TEXT = set(["ax>", '`@("', '---', '===', '^^^', "AX>", "GIZ"])
 _NEWSGROUPS_REMOVE_SUBSET = ('headers', 'footers', 'quotes')
-_CATEGORIES = ['sci.med', 'soc.religion.christian',]
+_CATEGORIES = None
 
 parser = ArgumentParser()
 
 parser.add_argument(
-    "--file_path", help="Path to save the 20 newsgroups dataset.", required=True)
+    "--output_path", help="Path to save the 20 newsgroups dataset.", required=True)
 
 args, _ = parser.parse_known_args()
 
@@ -38,18 +38,24 @@ def remove_from_line(line, remove_set):
        Line with words removed, if any."""
     return " ".join(w for w in line.split() if not any(t in w for t in remove_set))
 
-if os.path.exists(args.file_path):
-    logger.info("File at {} exists. Exiting.".format(args.file_path))
+if os.path.exists(args.output_path):
+    logger.info("File at {} exists. Exiting.".format(args.output_path))
     exit
 
 logger.info("Downloading 20 newsgroups dataset...")
-os.makedirs(os.path.dirname(args.file_path), exist_ok=True)
-texts = fetch_20newsgroups(subset='train', categories=_CATEGORIES, remove=_NEWSGROUPS_REMOVE_SUBSET).data
-texts = [remove_from_line(line, _BAD_TEXT) for line in texts]
 
-with open(args.file_path, 'w+') as fp:
-    for text in texts:
-        fp.write("{}\n".format(text))
+subsets = ["train", "test"]
 
-logger.info("20 newsgroups dataset written to {}".format(args.file_path))
+os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+
+for subset in subsets:
+    texts = fetch_20newsgroups(subset=subset, categories=_CATEGORIES, remove=_NEWSGROUPS_REMOVE_SUBSET).data
+    texts = [remove_from_line(line, _BAD_TEXT) for line in texts]
+    file_path = os.path.join(args.output_path, "{}.txt".format(subset))
+
+    with open(file_path, 'w+') as fp:
+        for text in texts:
+            fp.write("{}\n".format(text))
+
+logger.info("20 newsgroups dataset written to {}".format(args.output_path))
 logger.info("Program executed in {} seconds.".format(time.time() - start))

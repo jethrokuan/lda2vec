@@ -5,6 +5,36 @@ import numpy as np
 import spacy
 import tensorflow as tf
 from spacy.attrs import LOWER, LIKE_URL, LIKE_EMAIL, IS_OOV, IS_PUNCT
+from nltk.tokenize import word_tokenize
+from nltk.stem.porter import PorterStemmer
+from gensim.corpora import Dictionary
+
+_OOV_TOKEN = "<OOV>"
+_OOV_TOKEN_ID = -1
+
+def preprocess(documents,
+               stem=False,
+               oov_token="<OOV>",
+               oov_id=-1):
+    """Preprocess documents.
+
+    Args:
+        documents: An array of strings, each string representing a document.
+        stem: (bool) Whether to use a stemmer. Defaults to False.
+
+
+    Returns:
+        (gensim Dictionary, tokenized documents)
+    """
+    tokenized_docs = [word_tokenize(doc) for doc in documents]
+    if stem:
+        porter_stemmer = PorterStemmer()
+        tokenized_docs = [[porter_stemmer.stem(token) for token in doc]
+                          for doc in tokenized_docs]
+    dictionary = Dictionary(tokenized_docs)
+    dictionary.filter_extremes(no_below=0, no_above=1, keep_n=20000)
+
+    return dictionary, tokenized_docs
 
 
 class NlpPipeline(object):

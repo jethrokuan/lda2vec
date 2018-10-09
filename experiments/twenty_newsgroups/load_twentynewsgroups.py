@@ -9,9 +9,6 @@ from dataset_tools.preprocess import NlpPipeline
 from dataset_tools.utils import read_file
 from utils.dirs import create_dirs
 
-# CORPUS = "dataset_tools/test_data/lorem_ipsum.txt"
-# EXPERIMENT_DIR = "experiments/lorem_ipsum/"
-
 CORPUS = "datasets/twenty_newsgroups.txt"
 EXPERIMENT_DIR = "experiments/twenty_newsgroups/"
 create_dirs([EXPERIMENT_DIR])
