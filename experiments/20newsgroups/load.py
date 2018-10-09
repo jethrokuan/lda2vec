@@ -8,16 +8,16 @@ import pandas as pd
 
 from collections import defaultdict
 
-CORPUS = "datasets/twenty_newsgroups/train.txt"
+CORPUS = "data/twenty_newsgroups/train.txt"
 texts = read_file(CORPUS)
-SAVE_DIR = "datasets/twenty_newsgroups/"
+SAVE_DIR = "data/twenty_newsgroups/"
 create_dirs([SAVE_DIR])
 
 _OOV_TOKEN = "<OOV>"
 _OOV_TOKEN_ID = -1
 
 dct, tokenized_docs = preprocess(texts, stem=True)
-_OOV_TOKEN_ID = dct.token2id(_OOV_TOKEN)
+_OOV_TOKEN_ID = dct.token2id[_OOV_TOKEN]
 
 frequency = defaultdict(int)
 
