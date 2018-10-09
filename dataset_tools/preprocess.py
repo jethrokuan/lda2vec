@@ -34,6 +34,9 @@ def preprocess(documents,
     dictionary = Dictionary(tokenized_docs)
     dictionary.filter_extremes(no_below=0, no_above=1, keep_n=20000)
 
+    # Add OOV to dictionary
+    dictionary.add_documents([["<OOV>"]])
+
     return dictionary, tokenized_docs
 
 

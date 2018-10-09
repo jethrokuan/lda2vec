@@ -17,6 +17,7 @@ _OOV_TOKEN = "<OOV>"
 _OOV_TOKEN_ID = -1
 
 dct, tokenized_docs = preprocess(texts, stem=True)
+_OOV_TOKEN_ID = dct.token2id(_OOV_TOKEN)
 
 frequency = defaultdict(int)
 
@@ -46,11 +47,8 @@ df.to_csv("{}/train.csv".format(SAVE_DIR), index=False, header=True)
 total_count = sum(frequency.values())
 normalized_frequency = {k: v / total_count for k, v in frequency.items()}
 
-token_to_idx = dct.token2id
-token_to_idx[_OOV_TOKEN] = _OOV_TOKEN_ID
-
 with open("{}/token_to_idx.json".format(SAVE_DIR), "w") as fp:
-    json.dump(token_to_idx, fp)
+    json.dump(dct.token2id, fp)
 
 with open("{}/freq.json".format(SAVE_DIR), "w") as fp:
     json.dump(normalized_frequency, fp)
