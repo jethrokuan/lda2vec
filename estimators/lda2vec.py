@@ -1,6 +1,32 @@
 import tensorflow as tf
 import numpy as np
 
+import os
+import json
+
+def load_preprocessed_data(data_path):
+    file_freq = os.path.join(data_path, "freq.json")
+    file_idx2token = os.path.join(data_path, "idx2token.json")
+    file_token2idx = os.path.join(data_path, "token2idx.json")
+    file_meta = os.path.join(data_path, "meta.json")
+    file_train_csv = os.path.join(data_path, "train.csv")
+
+    with open(file_freq, "r") as fp:
+        freq = json.load(fp)
+
+    with open(file_idx2token, "r") as fp:
+        idx2token = json.load(fp)
+
+    with open(file_token2idx, "r") as fp:
+        token2idx = json.load(fp)
+
+    with open(file_meta, "r") as fp:
+        meta = json.load(fp)
+
+    return (file_train_csv, meta, freq, idx2token, token2idx)
+
+file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups")
+
 def train_input_fn(f, batch_size):
     dataset = tf.contrib.data.make_csv_dataset(
         f,
@@ -101,8 +127,7 @@ def lda2vec_model_fn(features, labels, mode, params):
         loss_lda = batch_size / params["num_documents"] * dirichlet_likelihood(
             document_embedding, params["alpha"])
 
-    with tf.variable_scope("total_loss"):
-        loss = loss_nce + params["lambda"] * loss_lda
+    loss = tf.add(loss_nce, params["lambda"] * loss_lda, name="loss")
 
     train_op = tf.train.AdamOptimizer(learning_rate=params["learning_rate"]).minimize(
         loss, global_step=tf.train.get_global_step())
@@ -116,8 +141,6 @@ def lda2vec_model_fn(features, labels, mode, params):
 
 my_feature_columns = []
 
-_VOCAB_SIZE = 20001
-
 COLUMN_NAMES = ["target", "doc_id"]
 
 lda2vec = tf.estimator.Estimator(
@@ -128,27 +151,30 @@ lda2vec = tf.estimator.Estimator(
         "embedding_size": 256,
         "num_topics": 20,
         "num_documents": 11314,
-        "lambda": 20,
+        "lambda": 1,
         "temperature": 1.0,
         "alpha": 0.7,
-        "vocabulary_size": _VOCAB_SIZE,
+        "vocabulary_size": meta["vocab_size"],
         "negative_samples": 15
     }
 )
 
+early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
+    lda2vec,
+    metric_name="loss",
+    max_steps_without_decrease=1000,
+    min_steps=1000
+)
+
 lda2vec.train(
-    input_fn=lambda: train_input_fn("data/twenty_newsgroups/train.csv", 4096),
-    max_steps=1000000,
+    input_fn=lambda: train_input_fn(file_train_csv, 4096),
+    max_steps=10000,
+    # hooks = [early_stopping]
 )
 
 predictions = lda2vec.predict(
-    input_fn=lambda: train_input_fn("data/twenty_newsgroups/train.csv", 4096),)
-
-import json
-
-with open("data/twenty_newsgroups/idx2token.json", "r") as fp:
-     id2token= json.load(fp)
+    input_fn=lambda: train_input_fn(file_train_csv, 4096),)
 
 for pred in predictions:
-    print(list(map(id2token.get, map(str, pred["sim_idxs"]))))
+    print(list(map(idx2token.get, map(str, pred["sim_idxs"]))))
     exit

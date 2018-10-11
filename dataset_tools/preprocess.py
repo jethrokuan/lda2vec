@@ -14,6 +14,7 @@ _OOV_TOKEN_ID = -1
 
 def preprocess(documents,
                stem=False,
+               vocab_size=10000,
                oov_token="<OOV>",
                oov_id=-1):
     """Preprocess documents.
@@ -26,13 +27,18 @@ def preprocess(documents,
     Returns:
         (gensim Dictionary, tokenized documents)
     """
+    def process_token(token):
+        """Processing to perform at the token level"""
+        return token.lower()
+
     tokenized_docs = [word_tokenize(doc) for doc in documents]
+    tokenized_docs = [list(map(process_token, doc)) for doc in documents]
     if stem:
         porter_stemmer = PorterStemmer()
         tokenized_docs = [[porter_stemmer.stem(token) for token in doc]
                           for doc in tokenized_docs]
     dictionary = Dictionary(tokenized_docs)
-    dictionary.filter_extremes(no_below=0, no_above=1, keep_n=20000)
+    dictionary.filter_extremes(no_below=5, no_above=0.8, keep_n=vocab_size)
 
     # Add OOV to dictionary
     dictionary.add_documents([["<OOV>"]])
