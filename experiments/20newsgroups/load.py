@@ -16,7 +16,7 @@ create_dirs([SAVE_DIR])
 _OOV_TOKEN = "<OOV>"
 _OOV_TOKEN_ID = -1
 
-dct, tokenized_docs = preprocess(texts, stem=True)
+dct, tokenized_docs = preprocess(texts, stem=False)
 _OOV_TOKEN_ID = dct.token2id[_OOV_TOKEN]
 
 frequency = defaultdict(int)
@@ -41,6 +41,7 @@ for idx, doc in enumerate(tokenized_docs):
             ex["doc_id"] = idx
             data.append(ex)
 
+
 df = pd.DataFrame(data)
 df.to_csv("{}/train.csv".format(SAVE_DIR), index=False, header=True)
 
@@ -60,6 +61,10 @@ with open("{}/freq.json".format(SAVE_DIR), "w") as fp:
 
 with open("{}/meta.json".format(SAVE_DIR), "w") as fp:
     json.dump({
-        "vocab": len(dct),
+        "vocab_size": len(dct),
         "num_docs": len(tokenized_docs)
     }, fp)
+
+with open("{}/word_embeddings.tsv".format(SAVE_DIR), "w") as fp:
+    for _, v in dct.items():
+        fp.write("{}\n".format(v))

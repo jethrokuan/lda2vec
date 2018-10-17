@@ -27,16 +27,17 @@ def preprocess(documents,
     Returns:
         (gensim Dictionary, tokenized documents)
     """
-    def process_token(token):
-        """Processing to perform at the token level"""
-        return token.lower()
+    porter_stemmer = PorterStemmer()
 
-    tokenized_docs = [word_tokenize(doc) for doc in documents]
-    tokenized_docs = [list(map(process_token, doc)) for doc in documents]
-    if stem:
-        porter_stemmer = PorterStemmer()
-        tokenized_docs = [[porter_stemmer.stem(token) for token in doc]
-                          for doc in tokenized_docs]
+    def process_document(doc):
+        tokens = word_tokenize(doc)
+        tokens = [token.lower() for token in tokens if token.isalpha()]
+        if stem:
+            tokens = [porter_stemmer.stem(token) for token in tokens]
+        return tokens
+
+    tokenized_docs = list(map(process_document, documents))
+
     dictionary = Dictionary(tokenized_docs)
     dictionary.filter_extremes(no_below=5, no_above=0.8, keep_n=vocab_size)
 

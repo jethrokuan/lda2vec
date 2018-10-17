@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import itertools
 
 import os
 import json
@@ -25,7 +26,7 @@ def load_preprocessed_data(data_path):
 
     return (file_train_csv, meta, freq, idx2token, token2idx)
 
-file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups")
+file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups/")
 
 def train_input_fn(f, batch_size):
     dataset = tf.contrib.data.make_csv_dataset(
@@ -110,6 +111,14 @@ def lda2vec_model_fn(features, labels, mode, params):
             name="nce_weights")
         nce_biases = tf.Variable(tf.zeros(params["vocabulary_size"]), name="nce_biases")
         labels = tf.reshape(labels, [tf.shape(labels)[0], 1])
+        sampler = tf.nn.learned_unigram_candidate_sampler(
+            true_classes=tf.cast(labels, tf.int64),
+            num_true=1,
+            num_sampled=params["negative_samples"],
+            unique=True,
+            range_max=params["vocabulary_size"],
+            name="sampler"
+        )
         loss_nce = tf.reduce_mean(
             tf.nn.nce_loss(
                 weights=nce_weights,
@@ -119,7 +128,7 @@ def lda2vec_model_fn(features, labels, mode, params):
                 num_sampled=params["negative_samples"],
                 num_classes=params["vocabulary_size"],
                 num_true=1,
-                sampled_values=None
+                sampled_values=sampler
             ))
 
     with tf.variable_scope("lda_loss"):
@@ -127,7 +136,11 @@ def lda2vec_model_fn(features, labels, mode, params):
         loss_lda = batch_size / params["num_documents"] * dirichlet_likelihood(
             document_embedding, params["alpha"])
 
-    loss = tf.add(loss_nce, params["lambda"] * loss_lda, name="loss")
+    step = tf.train.get_global_step()
+    loss_combined = tf.add(loss_nce, params["lambda"] * loss_lda, name="loss")
+    loss = tf.cond(step < params["switch_loss"],
+                   lambda: loss_nce,
+                   lambda: loss_combined)
 
     train_op = tf.train.AdamOptimizer(learning_rate=params["learning_rate"]).minimize(
         loss, global_step=tf.train.get_global_step())
@@ -143,20 +156,23 @@ my_feature_columns = []
 
 COLUMN_NAMES = ["target", "doc_id"]
 
+params = {
+    "learning_rate": 0.001,
+    "embedding_size": 128,
+    "num_topics": 20,
+    "num_documents": meta["num_docs"],
+    "lambda": 200,
+    "temperature": 1.0,
+    "alpha": 0.7,
+    "switch_loss": 0,
+    "vocabulary_size": meta["vocab_size"],
+    "negative_samples": 64
+}
+
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
-    model_dir="built_models/lda2vec",
-    params={
-        "learning_rate": 0.01,
-        "embedding_size": 256,
-        "num_topics": 20,
-        "num_documents": 11314,
-        "lambda": 1,
-        "temperature": 1.0,
-        "alpha": 0.7,
-        "vocabulary_size": meta["vocab_size"],
-        "negative_samples": 15
-    }
+    model_dir="built_models/base_params",
+    params=params
 )
 
 early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
@@ -168,13 +184,16 @@ early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
 
 lda2vec.train(
     input_fn=lambda: train_input_fn(file_train_csv, 4096),
-    max_steps=10000,
+    max_steps=300000,
     # hooks = [early_stopping]
 )
 
 predictions = lda2vec.predict(
-    input_fn=lambda: train_input_fn(file_train_csv, 4096),)
+    input_fn=lambda: ({}, []))
+predictions = itertools.islice(predictions, params["num_topics"])
 
-for pred in predictions:
-    print(list(map(idx2token.get, map(str, pred["sim_idxs"]))))
-    exit
+for idx, pred in enumerate(predictions):
+    print("Topic {}: {}".format(
+        idx,
+        list(map(idx2token.get, map(str, pred["sim_idxs"])))
+    ))
