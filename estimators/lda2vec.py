@@ -97,6 +97,9 @@ def lda2vec_model_fn(features, labels, mode, params):
     document_context = tf.matmul(document_proportions,
                                  topic_embedding, name="document_context")
 
+    word_context = tf.nn.dropout(word_context, keep_prob=params["dropout_ratio"])
+    document_context = tf.nn.dropout(document_context, keep_prob=params["dropout_ratio"])
+
     contexts_to_add = [word_context, document_context]
 
     context = tf.add_n(contexts_to_add, name="context_vector")
@@ -166,7 +169,8 @@ params = {
     "alpha": 0.7,
     "switch_loss": 0,
     "vocabulary_size": meta["vocab_size"],
-    "negative_samples": 15
+    "negative_samples": 15,
+    "dropout_ratio": 0.8
 }
 
 lda2vec = tf.estimator.Estimator(
