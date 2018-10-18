@@ -26,7 +26,7 @@ def load_preprocessed_data(data_path):
 
     return (file_train_csv, meta, freq, idx2token, token2idx)
 
-file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups/")
+file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups/no_oov")
 
 def train_input_fn(f, batch_size):
     dataset = tf.contrib.data.make_csv_dataset(
@@ -158,15 +158,15 @@ COLUMN_NAMES = ["target", "doc_id"]
 
 params = {
     "learning_rate": 0.001,
-    "embedding_size": 128,
-    "num_topics": 20,
+    "embedding_size": 256,
+    "num_topics": 15,
     "num_documents": meta["num_docs"],
     "lambda": 200,
     "temperature": 1.0,
     "alpha": 0.7,
     "switch_loss": 0,
     "vocabulary_size": meta["vocab_size"],
-    "negative_samples": 64
+    "negative_samples": 15
 }
 
 lda2vec = tf.estimator.Estimator(
@@ -184,7 +184,7 @@ early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
 
 lda2vec.train(
     input_fn=lambda: train_input_fn(file_train_csv, 4096),
-    max_steps=300000,
+    max_steps=100000,
     # hooks = [early_stopping]
 )
 
