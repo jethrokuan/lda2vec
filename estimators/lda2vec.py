@@ -5,28 +5,12 @@ import itertools
 import os
 import json
 
-def load_preprocessed_data(data_path):
-    file_freq = os.path.join(data_path, "freq.json")
-    file_idx2token = os.path.join(data_path, "idx2token.json")
-    file_token2idx = os.path.join(data_path, "token2idx.json")
-    file_meta = os.path.join(data_path, "meta.json")
-    file_train_csv = os.path.join(data_path, "train.csv")
+from argparse import ArgumentParser
+from dataset_tools.data_loader import DataLoader
 
-    with open(file_freq, "r") as fp:
-        freq = json.load(fp)
+parser = ArgumentParser()
 
-    with open(file_idx2token, "r") as fp:
-        idx2token = json.load(fp)
-
-    with open(file_token2idx, "r") as fp:
-        token2idx = json.load(fp)
-
-    with open(file_meta, "r") as fp:
-        meta = json.load(fp)
-
-    return (file_train_csv, meta, freq, idx2token, token2idx)
-
-file_train_csv, meta, freq, idx2token, token2idx = load_preprocessed_data("data/twenty_newsgroups/no_oov")
+dataloader = DataLoader("data/twenty_newsgroups/no_oov")
 
 def train_input_fn(f, batch_size):
     dataset = tf.contrib.data.make_csv_dataset(
@@ -163,19 +147,19 @@ params = {
     "learning_rate": 0.001,
     "embedding_size": 256,
     "num_topics": 15,
-    "num_documents": meta["num_docs"],
+    "num_documents": dataloader.meta["num_docs"],
     "lambda": 200,
     "temperature": 1.0,
     "alpha": 0.7,
     "switch_loss": 0,
-    "vocabulary_size": meta["vocab_size"],
+    "vocabulary_size": dataloader.meta["vocab_size"],
     "negative_samples": 15,
     "dropout_ratio": 0.8
 }
 
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
-    model_dir="built_models/base_params",
+    model_dir="built_models/test",
     params=params
 )
 
@@ -187,8 +171,8 @@ early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
 )
 
 lda2vec.train(
-    input_fn=lambda: train_input_fn(file_train_csv, 4096),
-    max_steps=100000,
+    input_fn=lambda: train_input_fn(dataloader.train, 4096),
+    max_steps=1000,
     # hooks = [early_stopping]
 )
 
@@ -199,5 +183,5 @@ predictions = itertools.islice(predictions, params["num_topics"])
 for idx, pred in enumerate(predictions):
     print("Topic {}: {}".format(
         idx,
-        list(map(idx2token.get, map(str, pred["sim_idxs"])))
+        list(map(dataloader.idx2token.get, map(str, pred["sim_idxs"])))
     ))
