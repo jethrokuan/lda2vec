@@ -84,6 +84,9 @@ def lda2vec_model_fn(features, labels, mode, params):
     word_context = tf.nn.dropout(word_context, keep_prob=params["dropout_ratio"])
     document_context = tf.nn.dropout(document_context, keep_prob=params["dropout_ratio"])
 
+    word_context = tf.nn.l2_normalize(word_context, name="normalize_word")
+    word_context = tf.nn.l2_normalize(document_context, name="normalize_document")
+
     contexts_to_add = [word_context, document_context]
 
     context = tf.add_n(contexts_to_add, name="context_vector")
@@ -159,7 +162,7 @@ params = {
 
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
-    model_dir="built_models/test",
+    model_dir="built_models/normalized",
     params=params
 )
 
@@ -172,7 +175,7 @@ early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
 
 lda2vec.train(
     input_fn=lambda: train_input_fn(dataloader.train, 4096),
-    max_steps=1000,
+    max_steps=10000,
     # hooks = [early_stopping]
 )
 
