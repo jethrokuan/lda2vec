@@ -1,3 +1,4 @@
+import uuid
 import tensorflow as tf
 import numpy as np
 import itertools
@@ -9,6 +10,8 @@ from argparse import ArgumentParser
 from dataset_tools.data_loader import DataLoader
 
 parser = ArgumentParser()
+
+tf.logging.set_verbosity(tf.logging.INFO)
 
 dataloader = DataLoader("data/twenty_newsgroups/no_oov")
 
@@ -42,7 +45,9 @@ def lda2vec_model_fn(features, labels, mode, params):
             "topic_embedding",
             shape=[params["num_topics"], params["embedding_size"]],
             dtype=tf.float32,
-            initializer=tf.orthogonal_initializer(gain=scalar))
+            # initializer=tf.orthogonal_initializer(gain=scalar)
+            initializer=tf.orthogonal_initializer(gain=5)
+        )
         document_embedding = tf.get_variable(
             "document_embedding",
             shape=[params["num_documents"], params["num_topics"]],
@@ -78,14 +83,14 @@ def lda2vec_model_fn(features, labels, mode, params):
     document_softmax = tf.nn.softmax(
         document_proportions / params["temperature"], name="document_softmax")
 
-    document_context = tf.matmul(document_proportions,
+    document_context = tf.matmul(document_softmax,
                                  topic_embedding, name="document_context")
 
-    word_context = tf.nn.dropout(word_context, keep_prob=params["dropout_ratio"])
-    document_context = tf.nn.dropout(document_context, keep_prob=params["dropout_ratio"])
+    # word_context = tf.nn.dropout(word_context, keep_prob=params["dropout_ratio"])
+    # document_context = tf.nn.dropout(document_context, keep_prob=params["dropout_ratio"])
 
-    word_context = tf.nn.l2_normalize(word_context, name="normalize_word")
-    word_context = tf.nn.l2_normalize(document_context, name="normalize_document")
+    # word_context = tf.nn.l2_normalize(word_context, name="normalize_word")
+    # word_context = tf.nn.l2_normalize(document_context, name="normalize_document")
 
     contexts_to_add = [word_context, document_context]
 
@@ -126,13 +131,9 @@ def lda2vec_model_fn(features, labels, mode, params):
         loss_lda = batch_size / params["num_documents"] * dirichlet_likelihood(
             document_embedding, params["alpha"])
 
-    step = tf.train.get_global_step()
-    loss_combined = tf.add(loss_nce, params["lambda"] * loss_lda, name="loss")
-    loss = tf.cond(step < params["switch_loss"],
-                   lambda: loss_nce,
-                   lambda: loss_combined)
+    loss = loss_nce + params["lambda"] * loss_lda
 
-    train_op = tf.train.AdamOptimizer(learning_rate=params["learning_rate"]).minimize(
+    train_op = tf.train.AdagradOptimizer(learning_rate=params["learning_rate"]).minimize(
         loss, global_step=tf.train.get_global_step())
 
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -153,16 +154,15 @@ params = {
     "num_documents": dataloader.meta["num_docs"],
     "lambda": 200,
     "temperature": 1.0,
-    "alpha": 0.7,
-    "switch_loss": 0,
+    "alpha": 0.5,
     "vocabulary_size": dataloader.meta["vocab_size"],
     "negative_samples": 15,
-    "dropout_ratio": 0.8
+    "dropout_ratio": 0.5
 }
 
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
-    model_dir="built_models/normalized",
+    model_dir="built_models/test_{}".format(uuid.uuid1()),
     params=params
 )
 
@@ -173,11 +173,27 @@ early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
     min_steps=1000
 )
 
-lda2vec.train(
-    input_fn=lambda: train_input_fn(dataloader.train, 4096),
-    max_steps=10000,
-    # hooks = [early_stopping]
+log_tensors = tf.train.LoggingTensorHook(
+    tensors=["embeddings/topic_embedding", "embeddings/word_embedding", # "document_context", "word_context"
+    ],
+    every_n_iter=1000,
 )
+
+lda2vec.train(
+    input_fn=lambda: train_input_fn(dataloader.train, 64),
+    max_steps=500000,
+    # hooks = [log_tensors]
+)
+
+# topics = lda2vec.get_variable_value("embeddings/topic_embedding:0")
+# words = lda2vec.get_variable_value("embeddings/word_embedding:0")
+# documents = lda2vec.get_variable_value("embeddings/document_embedding:0")
+# proportions = lda2vec.get_variable_value("document_softmax:0")
+
+# print(topics)
+# print(words)
+# print(documents)
+# print(proportions)
 
 predictions = lda2vec.predict(
     input_fn=lambda: ({}, []))
