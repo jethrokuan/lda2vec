@@ -45,8 +45,7 @@ def lda2vec_model_fn(features, labels, mode, params):
             "topic_embedding",
             shape=[params["num_topics"], params["embedding_size"]],
             dtype=tf.float32,
-            # initializer=tf.orthogonal_initializer(gain=scalar)
-            initializer=tf.orthogonal_initializer(gain=5)
+            initializer=tf.orthogonal_initializer(gain=scalar)
         )
         document_embedding = tf.get_variable(
             "document_embedding",
