@@ -23,27 +23,34 @@ frequency = defaultdict(int)
 
 data = []
 
-for idx, doc in enumerate(tokenized_docs):
-    id_doc = dct.doc2idx(doc, _OOV_TOKEN_ID)
-    for token_id in id_doc:
-        frequency[token_id] += 1
-    pairs, _ = skipgrams(
-        id_doc,
-        vocabulary_size=len(dct),
-        window_size=5,
-        shuffle=True,
-        negative_samples=0)
+# data is an array containing examples
+# TODO: data is now stored in memory, probably
+# need to move this to a spark/beam job later on.
 
-    if len(pairs) > 2:
-        for pair in pairs:
-            ex = {}
-            ex["target"], ex["context"] = pair
-            ex["doc_id"] = idx
-            data.append(ex)
+def _int64_feature(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
+with tf.python_io.TFRecordWriter("train.tfrecord"):
+    for idx, doc in enumerate(tokenized_docs):
+        id_doc = dct.doc2idx(doc, _OOV_TOKEN_ID)
+        for token_id in id_doc:
+            frequency[token_id] += 1
+        pairs, _ = skipgrams(
+            id_doc,
+            vocabulary_size=len(dct),
+            window_size=5,
+            shuffle=True,
+            negative_samples=0)
+        if len(pairs) > 2:
+            for pair in pairs:
+                feature = {
+                    "target": _int64_feature(pair[0]),
+                    "context": _int64_feature(pair[1]),
+                    "doc_id": _int64_feature(idx)
+                }
+                example = tf.train.Example(features=tf.train.Features(feature=feature))
+                writer.write(example.SerializeToString())
 
-df = pd.DataFrame(data)
-df.to_csv("{}/train.csv".format(SAVE_DIR), index=False, header=True)
 
 total_count = sum(frequency.values())
 normalized_frequency = {k: v / total_count for k, v in frequency.items()}
