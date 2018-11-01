@@ -21,7 +21,9 @@ def train_input_fn(f, batch_size):
         batch_size=batch_size,
         label_name="context"
     )
-    dataset = dataset.repeat()
+    dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
+    dataset = dataset.prefetch(buffer_size=5)
+    dataset.cache()
     batch = dataset.make_one_shot_iterator().get_next()
     return batch
 
