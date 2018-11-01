@@ -5,6 +5,7 @@ from utils.dirs import create_dirs
 from dataset_tools.utils import read_file
 import json
 import pandas as pd
+import os
 
 from collections import defaultdict
 
@@ -30,7 +31,9 @@ data = []
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-with tf.python_io.TFRecordWriter("train.tfrecord"):
+tfrecord_path = os.path.join(SAVE_DIR, "train.tfrecord")
+
+with tf.python_io.TFRecordWriter(tfrecord_path) as writer:
     for idx, doc in enumerate(tokenized_docs):
         id_doc = dct.doc2idx(doc, _OOV_TOKEN_ID)
         for token_id in id_doc:

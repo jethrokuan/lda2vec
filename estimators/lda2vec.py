@@ -9,23 +9,46 @@ import json
 from argparse import ArgumentParser
 from dataset_tools.data_loader import DataLoader
 
+from sklearn.preprocessing import normalize
+
 parser = ArgumentParser()
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
-dataloader = DataLoader("data/twenty_newsgroups/no_oov")
+dataloader = DataLoader("data/twenty_newsgroups/")
 
-def train_input_fn(f, batch_size):
-    dataset = tf.contrib.data.make_csv_dataset(
-        f,
-        batch_size=batch_size,
-        label_name="context"
-    )
-    dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
-    dataset = dataset.prefetch(buffer_size=5)
-    dataset.cache()
-    batch = dataset.make_one_shot_iterator().get_next()
-    return batch
+def build_input_fn(tfrecord_path, batch_size, cache=True):
+    def input_fn():
+        def parse(serialized):
+            features = {
+                'doc_id': tf.FixedLenFeature([], tf.int64),
+                'target': tf.FixedLenFeature([], tf.int64),
+                'context': tf.FixedLenFeature([], tf.int64)
+            }
+
+            parsed_example = tf.parse_single_example(
+                serialized=serialized, features=features)
+
+            input = {
+                'doc_id': tf.cast(parsed_example["doc_id"], tf.int32),
+                'target': tf.cast(parsed_example["target"], tf.int32)
+            }
+
+            label = tf.cast(parsed_example["context"], tf.int32)
+
+            return input, label
+
+
+        dataset = tf.data.TFRecordDataset(tfrecord_path)
+        dataset = dataset.map(parse)
+        dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
+        dataset = dataset.batch(batch_size=batch_size)
+        dataset = dataset.prefetch(2)
+        if cache:
+            dataset = dataset.cache()
+        batch = dataset.make_one_shot_iterator().get_next()
+        return batch
+    return input_fn
 
 def lda2vec_model_fn(features, labels, mode, params):
     """LDA2vec model."""
@@ -56,21 +79,6 @@ def lda2vec_model_fn(features, labels, mode, params):
             initializer=tf.initializers.random_normal(
                 mean=0.0,
                 stddev= 50 * scalar))
-
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = {}
-        topic_embedding = tf.nn.l2_normalize(topic_embedding, 1)
-        word_embedding = tf.nn.l2_normalize(word_embedding, 1)
-        with tf.variable_scope("k_closest"):
-            indices = np.arange(params["num_topics"])
-            topic = tf.nn.embedding_lookup(topic_embedding, indices)
-            cosine_sim = tf.matmul(topic, tf.transpose(word_embedding, [1, 0]))
-            sim, sim_idxs = tf.nn.top_k(cosine_sim, k=10)
-            predictions["top_k"] = sim
-            predictions["sim_idxs"] = sim_idxs
-            return tf.estimator.EstimatorSpec(
-                mode, predictions=predictions
-            )
 
     word_context = tf.nn.embedding_lookup(
         word_embedding, features["target"], name="word_context")
@@ -155,7 +163,7 @@ params = {
     "num_documents": dataloader.meta["num_docs"],
     "lambda": 200,
     "temperature": 1.0,
-    "alpha": 0.5,
+    "alpha": 0.7,
     "vocabulary_size": dataloader.meta["vocab_size"],
     "negative_samples": 15,
     "dropout_ratio": 0.5
@@ -181,27 +189,34 @@ log_tensors = tf.train.LoggingTensorHook(
 )
 
 lda2vec.train(
-    input_fn=lambda: train_input_fn(dataloader.train, 64),
-    max_steps=500000,
+    input_fn=build_input_fn(dataloader.train_path, 4096),
+    max_steps=1000000,
     # hooks = [log_tensors]
 )
 
-# topics = lda2vec.get_variable_value("embeddings/topic_embedding:0")
-# words = lda2vec.get_variable_value("embeddings/word_embedding:0")
-# documents = lda2vec.get_variable_value("embeddings/document_embedding:0")
-# proportions = lda2vec.get_variable_value("document_softmax:0")
+def get_topics(estimator):
+    """Gets the topics for a given estimator.
 
-# print(topics)
-# print(words)
-# print(documents)
-# print(proportions)
+    Args:
+       estimator: trained lda2vec estimator.
 
-predictions = lda2vec.predict(
-    input_fn=lambda: ({}, []))
-predictions = itertools.islice(predictions, params["num_topics"])
+    Returns:
+       None. Prints the topics for the trained model.
+    """
+    topic_embedding = estimator.get_variable_value("embeddings/topic_embedding:0")
+    word_embedding = estimator.get_variable_value("embeddings/word_embedding:0")
 
-for idx, pred in enumerate(predictions):
-    print("Topic {}: {}".format(
-        idx,
-        list(map(dataloader.idx2token.get, map(str, pred["sim_idxs"])))
-    ))
+    topic_embedding = normalize(topic_embedding, norm='l2')
+    word_embedding = normalize(word_embedding, norm='l2')
+
+    cosine_sim = np.matmul(topic_embedding, np.transpose(word_embedding))
+
+    for idx, topic in enumerate(cosine_sim):
+        top_k = topic.argsort()[::-1][:10]
+        nearest_words = list(map(dataloader.idx2token.get, map(str, top_k)))
+        print("Topic {}: {}".format(
+            idx,
+            nearest_words
+        ))
+
+get_topics(lda2vec)
