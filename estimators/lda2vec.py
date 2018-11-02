@@ -142,7 +142,7 @@ def lda2vec_model_fn(features, labels, mode, params):
 
     loss = loss_nce + params["lambda"] * loss_lda
 
-    train_op = tf.train.AdagradOptimizer(learning_rate=params["learning_rate"]).minimize(
+    train_op = tf.contrib.opt.LazyAdamOptimizer(learning_rate=params["learning_rate"]).minimize(
         loss, global_step=tf.train.get_global_step())
 
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -169,9 +169,11 @@ params = {
     "dropout_ratio": 0.5
 }
 
+model_dir = "built_models/test_{}".format(uuid.uuid1())
+
 lda2vec = tf.estimator.Estimator(
     model_fn = lda2vec_model_fn,
-    model_dir="built_models/test_{}".format(uuid.uuid1()),
+    model_dir=model_dir,
     params=params
 )
 
@@ -188,10 +190,13 @@ log_tensors = tf.train.LoggingTensorHook(
     every_n_iter=1000,
 )
 
+profiler_hook = tf.train.ProfilerHook(
+    save_steps=100, show_dataflow=True, show_memory=True, output_dir=model_dir)
+
 lda2vec.train(
-    input_fn=build_input_fn(dataloader.train_path, 4096),
-    max_steps=1000000,
-    # hooks = [log_tensors]
+    input_fn=build_input_fn(dataloader.train_path, 64),
+    max_steps=1000,
+    hooks = [profiler_hook]
 )
 
 def get_topics(estimator):
