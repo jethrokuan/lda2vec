@@ -136,9 +136,11 @@ def lda2vec_model_fn(features, labels, mode, params):
             ))
 
     with tf.variable_scope("lda_loss"):
+        # regularizer = tf.contrib.layers.l1_regularizer(scale=1.0)
+        # loss_lda = regularizer(document_proportions)
         batch_size = tf.cast(tf.shape(features["doc_id"])[0], dtype=tf.float32)
         loss_lda = batch_size / params["num_documents"] * dirichlet_likelihood(
-            document_embedding, params["alpha"])
+            document_proportions, params["alpha"])
 
     loss = loss_nce + params["lambda"] * loss_lda
 
