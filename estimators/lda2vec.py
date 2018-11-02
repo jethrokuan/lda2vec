@@ -142,7 +142,12 @@ def lda2vec_model_fn(features, labels, mode, params):
         loss_lda = batch_size / params["num_documents"] * dirichlet_likelihood(
             document_proportions, params["alpha"])
 
-    loss = loss_nce + params["lambda"] * loss_lda
+    global_step = tf.train.get_global_step()
+
+    loss = tf.cond(global_step < params["switch_loss_step"],
+                   lambda: loss_nce,
+                   lambda: loss_nce + params["lambda"] * loss_lda,
+    )
 
     train_op = tf.contrib.opt.LazyAdamOptimizer(learning_rate=params["learning_rate"]).minimize(
         loss, global_step=tf.train.get_global_step())
@@ -168,7 +173,8 @@ params = {
     "alpha": 0.7,
     "vocabulary_size": dataloader.meta["vocab_size"],
     "negative_samples": 15,
-    "dropout_ratio": 0.5
+    "dropout_ratio": 0.5,
+    "switch_loss_step": 0
 }
 
 model_dir = "built_models/test_{}".format(uuid.uuid1())
