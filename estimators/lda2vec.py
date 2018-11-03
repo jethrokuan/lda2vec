@@ -17,6 +17,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 dataloader = DataLoader("data/twenty_newsgroups/")
 
+
 def build_input_fn(tfrecord_path, batch_size, cache=True):
     def input_fn():
         def parse(serialized):
@@ -38,17 +39,19 @@ def build_input_fn(tfrecord_path, batch_size, cache=True):
 
             return input, label
 
-
         dataset = tf.data.TFRecordDataset(tfrecord_path)
         dataset = dataset.map(parse)
-        dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
+        dataset = dataset.apply(
+            tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
         dataset = dataset.batch(batch_size=batch_size)
         dataset = dataset.prefetch(2)
         if cache:
             dataset = dataset.cache()
         batch = dataset.make_one_shot_iterator().get_next()
         return batch
+
     return input_fn
+
 
 def lda2vec_model_fn(features, labels, mode, params):
     """LDA2vec model."""
@@ -62,38 +65,32 @@ def lda2vec_model_fn(features, labels, mode, params):
         scalar = 1 / np.sqrt(params["num_documents"] + params["num_topics"])
         word_embedding = tf.get_variable(
             "word_embedding",
-            shape=[params["vocabulary_size"],
-                   params["embedding_size"]],
+            shape=[params["vocabulary_size"], params["embedding_size"]],
             dtype=tf.float32,
             initializer=tf.initializers.random_normal())
         topic_embedding = tf.get_variable(
             "topic_embedding",
             shape=[params["num_topics"], params["embedding_size"]],
             dtype=tf.float32,
-            initializer=tf.orthogonal_initializer(gain=scalar)
-        )
+            initializer=tf.orthogonal_initializer(gain=scalar))
         document_embedding = tf.get_variable(
             "document_embedding",
             shape=[params["num_documents"], params["num_topics"]],
             dtype=tf.float32,
             initializer=tf.initializers.random_normal(
-                mean=0.0,
-                stddev= 50 * scalar))
+                mean=0.0, stddev=50 * scalar))
 
     word_context = tf.nn.embedding_lookup(
         word_embedding, features["target"], name="word_context")
 
     document_proportions = tf.nn.embedding_lookup(
-        document_embedding,
-        features["doc_id"],
-        name="document_proportions"
-    )
+        document_embedding, features["doc_id"], name="document_proportions")
 
     document_softmax = tf.nn.softmax(
         document_proportions / params["temperature"], name="document_softmax")
 
-    document_context = tf.matmul(document_softmax,
-                                 topic_embedding, name="document_context")
+    document_context = tf.matmul(
+        document_softmax, topic_embedding, name="document_context")
 
     # word_context = tf.nn.dropout(word_context, keep_prob=params["dropout_ratio"])
     # document_context = tf.nn.dropout(document_context, keep_prob=params["dropout_ratio"])
@@ -108,12 +105,11 @@ def lda2vec_model_fn(features, labels, mode, params):
     with tf.variable_scope("nce_loss"):
         nce_weights = tf.Variable(
             tf.truncated_normal(
-                [params["vocabulary_size"],
-                 params["embedding_size"]],
-                stddev=tf.sqrt(1/params["embedding_size"])
-            ),
+                [params["vocabulary_size"], params["embedding_size"]],
+                stddev=tf.sqrt(1 / params["embedding_size"])),
             name="nce_weights")
-        nce_biases = tf.Variable(tf.zeros(params["vocabulary_size"]), name="nce_biases")
+        nce_biases = tf.Variable(
+            tf.zeros(params["vocabulary_size"]), name="nce_biases")
         labels = tf.reshape(labels, [tf.shape(labels)[0], 1])
         sampler = tf.nn.learned_unigram_candidate_sampler(
             true_classes=tf.cast(labels, tf.int64),
@@ -121,8 +117,7 @@ def lda2vec_model_fn(features, labels, mode, params):
             num_sampled=params["negative_samples"],
             unique=True,
             range_max=params["vocabulary_size"],
-            name="sampler"
-        )
+            name="sampler")
         loss_nce = tf.reduce_mean(
             tf.nn.nce_loss(
                 weights=nce_weights,
@@ -132,8 +127,7 @@ def lda2vec_model_fn(features, labels, mode, params):
                 num_sampled=params["negative_samples"],
                 num_classes=params["vocabulary_size"],
                 num_true=1,
-                sampled_values=sampler
-            ))
+                sampled_values=sampler))
 
     with tf.variable_scope("lda_loss"):
         # regularizer = tf.contrib.layers.l1_regularizer(scale=1.0)
@@ -144,19 +138,20 @@ def lda2vec_model_fn(features, labels, mode, params):
 
     global_step = tf.train.get_global_step()
 
-    loss = tf.cond(global_step < params["switch_loss_step"],
-                   lambda: loss_nce,
-                   lambda: loss_nce + params["lambda"] * loss_lda,
+    loss = tf.cond(
+        global_step < params["switch_loss_step"],
+        lambda: loss_nce,
+        lambda: loss_nce + params["lambda"] * loss_lda,
     )
 
-    train_op = tf.contrib.opt.LazyAdamOptimizer(learning_rate=params["learning_rate"]).minimize(
-        loss, global_step=tf.train.get_global_step())
+    train_op = tf.contrib.opt.LazyAdamOptimizer(
+        learning_rate=params["learning_rate"]).minimize(
+            loss, global_step=tf.train.get_global_step())
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         tf.summary.scalar("loss_nce", loss_nce)
         tf.summary.scalar("loss_lda", loss_lda)
-        return tf.estimator.EstimatorSpec(
-            mode, loss=loss, train_op=train_op)
+        return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
 
 
 my_feature_columns = []
@@ -180,32 +175,33 @@ params = {
 model_dir = "built_models/test_{}".format(uuid.uuid1())
 
 lda2vec = tf.estimator.Estimator(
-    model_fn = lda2vec_model_fn,
-    model_dir=model_dir,
-    params=params
-)
+    model_fn=lda2vec_model_fn, model_dir=model_dir, params=params)
 
 early_stopping = tf.contrib.estimator.stop_if_no_decrease_hook(
     lda2vec,
     metric_name="loss",
     max_steps_without_decrease=1000,
-    min_steps=1000
-)
+    min_steps=1000)
 
 log_tensors = tf.train.LoggingTensorHook(
-    tensors=["embeddings/topic_embedding", "embeddings/word_embedding", # "document_context", "word_context"
+    tensors=[
+        "embeddings/topic_embedding",
+        "embeddings/word_embedding",  # "document_context", "word_context"
     ],
     every_n_iter=1000,
 )
 
 profiler_hook = tf.train.ProfilerHook(
-    save_steps=10000, show_dataflow=True, show_memory=True, output_dir=model_dir)
+    save_steps=10000,
+    show_dataflow=True,
+    show_memory=True,
+    output_dir=model_dir)
 
 lda2vec.train(
     input_fn=build_input_fn(dataloader.train_path, 512),
     max_steps=100000000,
-    hooks = [profiler_hook]
-)
+    hooks=[profiler_hook])
+
 
 def get_topics(estimator):
     """Gets the topics for a given estimator.
@@ -216,8 +212,10 @@ def get_topics(estimator):
     Returns:
        None. Prints the topics for the trained model.
     """
-    topic_embedding = estimator.get_variable_value("embeddings/topic_embedding:0")
-    word_embedding = estimator.get_variable_value("embeddings/word_embedding:0")
+    topic_embedding = estimator.get_variable_value(
+        "embeddings/topic_embedding:0")
+    word_embedding = estimator.get_variable_value(
+        "embeddings/word_embedding:0")
 
     topic_embedding = normalize(topic_embedding, norm='l2')
     word_embedding = normalize(word_embedding, norm='l2')
@@ -227,9 +225,7 @@ def get_topics(estimator):
     for idx, topic in enumerate(cosine_sim):
         top_k = topic.argsort()[::-1][:10]
         nearest_words = list(map(dataloader.idx2token.get, map(str, top_k)))
-        print("Topic {}: {}".format(
-            idx,
-            nearest_words
-        ))
+        print("Topic {}: {}".format(idx, nearest_words))
+
 
 get_topics(lda2vec)
