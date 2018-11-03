@@ -1,6 +1,8 @@
 import os
 import json
 
+import gin
+
 class DataLoader(object):
 
     def __init__(self, data_path):

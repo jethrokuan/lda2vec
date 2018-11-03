@@ -10,6 +10,7 @@ with import <nixpkgs> {};
     scipy
     nltk
     gensim
+    gin-config
 
     # Utilities
     yapf
