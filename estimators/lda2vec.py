@@ -41,7 +41,7 @@ def build_input_fn(tfrecord_path, batch_size, cache=True):
 
         dataset = tf.data.TFRecordDataset(tfrecord_path)
         dataset = dataset.map(parse)
-        dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
+        dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size=1000))
         dataset = dataset.batch(batch_size=batch_size)
         dataset = dataset.prefetch(2)
         if cache:
@@ -202,7 +202,7 @@ profiler_hook = tf.train.ProfilerHook(
     save_steps=10000, show_dataflow=True, show_memory=True, output_dir=model_dir)
 
 lda2vec.train(
-    input_fn=build_input_fn(dataloader.train_path, 64),
+    input_fn=build_input_fn(dataloader.train_path, 512),
     max_steps=100000000,
     hooks = [profiler_hook]
 )
