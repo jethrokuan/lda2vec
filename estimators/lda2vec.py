@@ -199,11 +199,11 @@ log_tensors = tf.train.LoggingTensorHook(
 )
 
 profiler_hook = tf.train.ProfilerHook(
-    save_steps=100, show_dataflow=True, show_memory=True, output_dir=model_dir)
+    save_steps=10000, show_dataflow=True, show_memory=True, output_dir=model_dir)
 
 lda2vec.train(
     input_fn=build_input_fn(dataloader.train_path, 64),
-    max_steps=1000,
+    max_steps=100000000,
     hooks = [profiler_hook]
 )
 
