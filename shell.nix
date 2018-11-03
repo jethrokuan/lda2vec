@@ -8,8 +8,8 @@ with import <nixpkgs> {};
     tensorflow
     numpy
     scipy
-    spacy
-    pandas
+    nltk
+    gensim
 
     # Utilities
     yapf
