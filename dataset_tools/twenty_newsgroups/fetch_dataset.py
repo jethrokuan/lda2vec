@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 _BAD_TEXT = set(["ax>", '`@("', '---', '===', '^^^', "AX>", "GIZ"])
 _NEWSGROUPS_REMOVE_SUBSET = ('headers', 'footers', 'quotes')
-_CATEGORIES = None
+_CATEGORIES = ["soc.religion.christian", "sci.electronics", "comp.windows.x"]
 
 parser = ArgumentParser()
 
@@ -55,7 +55,7 @@ for subset in subsets:
 
     with open(file_path, 'w+') as fp:
         for text in texts:
-            fp.write("{}\n".format(text))
+            fp.write("{}\n".format(text[:30]))
 
 logger.info("20 newsgroups dataset written to {}".format(args.output_path))
 logger.info("Program executed in {} seconds.".format(time.time() - start))
