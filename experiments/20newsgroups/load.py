@@ -4,7 +4,6 @@ from dataset_tools.preprocess import preprocess
 from utils.dirs import create_dirs
 from dataset_tools.utils import read_file
 import json
-import pandas as pd
 import os
 
 from collections import defaultdict
