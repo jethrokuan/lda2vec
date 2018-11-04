@@ -51,9 +51,9 @@ with tf.python_io.TFRecordWriter(tfrecord_path) as writer:
                         "context": _int64_feature(pair[1]),
                         "doc_id": _int64_feature(idx)
                     }
-                example = tf.train.Example(
-                    features=tf.train.Features(feature=feature))
-                writer.write(example.SerializeToString())
+                    example = tf.train.Example(
+                        features=tf.train.Features(feature=feature))
+                    writer.write(example.SerializeToString())
 
 
 total_count = sum(frequency.values())
