@@ -55,7 +55,7 @@ for subset in subsets:
 
     with open(file_path, 'w+') as fp:
         for text in texts:
-            fp.write("{}\n".format(text[:30]))
+            fp.write("{}\n".format(text))
 
 logger.info("20 newsgroups dataset written to {}".format(args.output_path))
 logger.info("Program executed in {} seconds.".format(time.time() - start))
