@@ -1,13 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import itertools
 import gin.tf.external_configurables
-
-import os
-import json
 
 from argparse import ArgumentParser
 from dataset_tools.data_loader import DataLoader
+from dataset_tools.embeddings import load_embeddings
 
 from sklearn.preprocessing import normalize
 
@@ -57,9 +54,20 @@ def build_input_fn(tfrecord_path, batch_size, cache=True):
 
 
 @gin.configurable("model")
-def build_model_fn(learning_rate, num_documents, num_topics, vocabulary_size,
-                   embedding_size, alpha, negative_samples, lda_loss_weight,
-                   temperature, dropout_ratio, optimizer, switch_loss_step):
+def build_model_fn(learning_rate, num_documents, num_topics,
+                   vocabulary_size, embedding_size, alpha,
+                   negative_samples, lda_loss_weight, temperature,
+                   dropout_ratio, optimizer, switch_loss_step,
+                   idx2token, pretrained_embeddings=None):
+
+    word_embedding_matrix = np.random.uniform(-1, 1, size=(vocabulary_size, embedding_size))
+    if pretrained_embeddings:
+        embeddings = load_embeddings(pretrained_embeddings)
+        for i, w in idx2token.items():
+            v = embeddings.get(w)
+            if v is not None and i < vocabulary_size:
+                word_embedding_matrix[i] = w
+
     def lda2vec_model_fn(features, labels, mode, params):
         """LDA2vec model."""
 
@@ -74,7 +82,7 @@ def build_model_fn(learning_rate, num_documents, num_topics, vocabulary_size,
                 "word_embedding",
                 shape=[vocabulary_size, embedding_size],
                 dtype=tf.float32,
-                initializer=tf.initializers.random_normal())
+                initializer=word_embedding_matrix)
             topic_embedding = tf.get_variable(
                 "topic_embedding",
                 shape=[num_topics, embedding_size],
@@ -166,7 +174,8 @@ def train(data_path, model_dir, max_steps, profile=False):
     dataloader = DataLoader(data_path)
     model_fn = build_model_fn(
         num_documents=dataloader.meta["num_docs"],
-        vocabulary_size=dataloader.meta["vocab_size"])
+        vocabulary_size=dataloader.meta["vocab_size"],
+        idx2token=dataloader.idx2token)
     input_fn = build_input_fn(tfrecord_path=dataloader.train_path)
     lda2vec = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir)
     hooks = []
