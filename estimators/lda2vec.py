@@ -60,7 +60,7 @@ def build_model_fn(learning_rate, num_documents, num_topics,
                    dropout_ratio, optimizer, switch_loss_step,
                    idx2token, pretrained_embeddings=None):
 
-    word_embedding_matrix = np.random.uniform(-1, 1, size=(vocabulary_size, embedding_size), dtype=np.float32)
+    word_embedding_matrix = np.random.uniform(-1, 1, size=(vocabulary_size, embedding_size)).astype("float32")
     if pretrained_embeddings:
         embeddings = load_embeddings(pretrained_embeddings)
         for i, w in idx2token.items():
