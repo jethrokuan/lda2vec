@@ -64,10 +64,13 @@ def build_model_fn(learning_rate, num_documents, num_topics,
     word_embedding_matrix = np.random.uniform(-1, 1, size=(vocabulary_size, embedding_size)).astype("float32")
     if pretrained_embeddings:
         embeddings = load_embeddings(pretrained_embeddings)
+        count = 0
         for i, w in idx2token.items():
             v = embeddings.get(w)
             if v is not None and int(i) < vocabulary_size:
                 word_embedding_matrix[int(i)] = v
+                count += 1
+        tf.logging.info("Preloaded {} of {} in vocab.".format(count, len(idx2token)))
 
     def lda2vec_model_fn(features, labels, mode, params):
         """LDA2vec model."""
