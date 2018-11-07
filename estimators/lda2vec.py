@@ -80,7 +80,6 @@ def build_model_fn(learning_rate, num_documents, num_topics,
             scalar = 1 / np.sqrt(num_documents + num_topics)
             word_embedding = tf.get_variable(
                 "word_embedding",
-                shape=[vocabulary_size, embedding_size],
                 dtype=tf.float32,
                 initializer=word_embedding_matrix)
             topic_embedding = tf.get_variable(
@@ -189,14 +188,17 @@ def train(data_path, model_dir, max_steps, profile=False):
 
     lda2vec.train(input_fn=input_fn, max_steps=max_steps, hooks=hooks)
 
+    get_topics(lda2vec, dataloader.idx2token)
+
     return lda2vec
 
 
-def get_topics(estimator):
+def get_topics(estimator, idx2token):
     """Gets the topics for a given estimator.
 
     Args:
        estimator: trained lda2vec estimator.
+       idx2token: idx2token mapping
 
     Returns:
        None. Prints the topics for the trained model.
@@ -213,10 +215,9 @@ def get_topics(estimator):
 
     for idx, topic in enumerate(cosine_sim):
         top_k = topic.argsort()[::-1][:10]
-        nearest_words = list(map(dataloader.idx2token.get, map(str, top_k)))
+        nearest_words = list(map(idx2token.get, map(str, top_k)))
         print("Topic {}: {}".format(idx, nearest_words))
 
 
 gin.parse_config_file(args.config)
 lda2vec = train()
-get_topics(lda2vec)
