@@ -218,7 +218,7 @@ def get_topics(estimator, idx2token):
         top_k = topic.argsort()[::-1][:30]
         nearest_words = list(map(idx2token.get, map(str, top_k)))
         # Remove stopwords
-        nearest_words = [word for word in nearest_words if word not in stopwords("english")][:10]
+        nearest_words = [word for word in nearest_words if word not in set(stopwords("english"))][:10]
         print("Topic {}: {}".format(idx, nearest_words))
 
 
