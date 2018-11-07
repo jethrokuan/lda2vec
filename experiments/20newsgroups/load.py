@@ -10,7 +10,7 @@ from collections import defaultdict
 
 CORPUS = "data/twenty_newsgroups/train.txt"
 texts = read_file(CORPUS)
-SAVE_DIR = "data/twenty_newsgroups/no_oov/"
+SAVE_DIR = "data/twenty_newsgroups/"
 create_dirs([SAVE_DIR])
 
 _OOV_TOKEN = "<OOV>"
@@ -45,15 +45,14 @@ with tf.python_io.TFRecordWriter(tfrecord_path) as writer:
             negative_samples=0)
         if len(pairs) > 2:
             for pair in pairs:
-                if _OOV_TOKEN_ID not in pair:
-                    feature = {
+                feature = {
                         "target": _int64_feature(pair[0]),
                         "context": _int64_feature(pair[1]),
                         "doc_id": _int64_feature(idx)
                     }
-                    example = tf.train.Example(
-                        features=tf.train.Features(feature=feature))
-                    writer.write(example.SerializeToString())
+                example = tf.train.Example(
+                    features=tf.train.Features(feature=feature))
+                writer.write(example.SerializeToString())
 
 
 total_count = sum(frequency.values())
