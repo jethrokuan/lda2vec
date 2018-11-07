@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import gin.tf.external_configurables
+from nltk.corpus import stopwords
 
 from argparse import ArgumentParser
 from dataset_tools.data_loader import DataLoader
@@ -214,8 +215,10 @@ def get_topics(estimator, idx2token):
     cosine_sim = np.matmul(topic_embedding, np.transpose(word_embedding))
 
     for idx, topic in enumerate(cosine_sim):
-        top_k = topic.argsort()[::-1][:10]
+        top_k = topic.argsort()[::-1][:30]
         nearest_words = list(map(idx2token.get, map(str, top_k)))
+        # Remove stopwords
+        nearest_words = [word for word in nearest_words if word not in stopwords("english")][:10]
         print("Topic {}: {}".format(idx, nearest_words))
 
 
