@@ -80,34 +80,39 @@ def build_model_fn(learning_rate, num_documents, num_topics,
             loss = (alpha - 1.0) * log_proportions
             return tf.reduce_sum(loss)
 
-        with tf.variable_scope("embeddings", reuse=tf.AUTO_REUSE):
-            scalar = 1 / np.sqrt(num_documents + num_topics)
-            word_embedding = tf.get_variable(
-                "word_embedding",
+        with tf.device("/cpu:0"):
+            with tf.variable_scope("embeddings", reuse=tf.AUTO_REUSE):
+                scalar = 1 / np.sqrt(num_documents + num_topics)
+                word_embedding = tf.get_variable(
+                    "word_embedding",
+                    shape=[vocabulary_size, embedding_size],
                 dtype=tf.float32,
-                initializer=word_embedding_matrix)
-            topic_embedding = tf.get_variable(
-                "topic_embedding",
-                shape=[num_topics, embedding_size],
-                dtype=tf.float32,
-                initializer=tf.orthogonal_initializer(gain=scalar))
-            document_embedding = tf.get_variable(
-                "document_embedding",
-                shape=[num_documents, num_topics],
-                dtype=tf.float32,
-                initializer=tf.initializers.random_normal(
-                    mean=0.0, stddev=50 * scalar))
+                    initializer=word_embedding_matrix)
+                document_embedding = tf.get_variable(
+                    "document_embedding",
+                    shape=[num_documents, num_topics],
+                    dtype=tf.float32,
+                    initializer=tf.initializers.random_normal(
+                        mean=0.0, stddev=50 * scalar))
 
-        word_context = tf.nn.embedding_lookup(
-            word_embedding, features["target"], name="word_context")
+        with tf.device("/cpu:0"):
+            word_context = tf.nn.embedding_lookup(
+                word_embedding, features["target"], name="word_context")
 
-        document_proportions = tf.nn.embedding_lookup(
-            document_embedding,
-            features["doc_id"],
-            name="document_proportions")
+            document_proportions = tf.nn.embedding_lookup(
+                document_embedding,
+                features["doc_id"],
+                name="document_proportions")
 
         document_softmax = tf.nn.softmax(
             document_proportions / temperature, name="document_softmax")
+
+        with tf.variable_scope("embeddings", reuse=tf.AUTO_REUSE):
+            topic_embedding = tf.get_variable(
+                    "topic_embedding",
+                    shape=[num_topics, embedding_size],
+                    dtype=tf.float32,
+                    initializer=tf.orthogonal_initializer(gain=scalar))
 
         document_context = tf.matmul(
             document_softmax, topic_embedding, name="document_context")
