@@ -85,8 +85,7 @@ def build_model_fn(learning_rate, num_documents, num_topics,
                 scalar = 1 / np.sqrt(num_documents + num_topics)
                 word_embedding = tf.get_variable(
                     "word_embedding",
-                    shape=[vocabulary_size, embedding_size],
-                dtype=tf.float32,
+                    dtype=tf.float32,
                     initializer=word_embedding_matrix)
                 document_embedding = tf.get_variable(
                     "document_embedding",
