@@ -1,0 +1,17 @@
+input.batch_size = 512
+
+model.learning_rate = 0.001
+model.embedding_size = 200
+model.num_topics = 15
+model.lda_loss_weight = 200
+model.temperature = 1.0
+model.alpha = 0.7
+model.negative_samples = 15
+model.dropout_ratio = 0.5
+model.switch_loss_step = 100000
+model.optimizer = @tf.train.AdamOptimizer
+model.pretrained_embeddings = "data/glove.6B.200d.txt"
+
+train.data_path = "data/twenty_newsgroups_downsampled/"
+train.model_dir = "built_models/baseline_pretrained_downsampled"
+train.max_steps = 1
