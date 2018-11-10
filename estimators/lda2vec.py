@@ -184,7 +184,12 @@ def train(data_path, model_dir, max_steps, profile=False):
         vocabulary_size=dataloader.meta["vocab_size"],
         idx2token=dataloader.idx2token)
     input_fn = build_input_fn(tfrecord_path=dataloader.train_path)
-    lda2vec = tf.estimator.Estimator(model_fn=model_fn, model_dir=model_dir)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    run_config = tf.estimator.RunConfig(session_config=config)
+    lda2vec = tf.estimator.Estimator(model_fn=model_fn,
+                                     model_dir=model_dir,
+                                     config=run_config)
     hooks = []
     if profile:
         profiler_hook = tf.train.ProfilerHook(
