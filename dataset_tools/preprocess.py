@@ -2,6 +2,8 @@
 
 from collections import Counter
 import numpy as np
+import math
+import random
 # import spacy
 import tensorflow as tf
 # from spacy.attrs import LOWER, LIKE_URL, LIKE_EMAIL, IS_OOV, IS_PUNCT
@@ -11,6 +13,29 @@ from gensim.corpora import Dictionary
 
 _OOV_TOKEN = "<OOV>"
 _OOV_TOKEN_ID = -1
+
+def downsample(document,
+               frequencies,
+               threshold=1e-5):
+    """Downsamples a document.
+
+    Args:
+        document: [str] list of tokens in document.
+        frequencies: {idx: freq} mapping of token index to normalized frequency.
+        threshold: Threshold value to control sampling aggressiveness.
+            Defaults to 10^-5.
+
+    Returns:
+        [str] Downsampled document.
+    """
+    def _get_probability(t, f):
+        return (f - t) / f  - math.sqrt(t / f)
+
+    return [
+        token for token in document
+        if random.random() > _get_probability(threshold, frequencies[token])
+    ]
+
 
 def preprocess(documents,
                stem=False,

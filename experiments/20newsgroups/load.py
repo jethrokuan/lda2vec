@@ -1,6 +1,6 @@
 from tensorflow.python.keras.preprocessing.sequence import skipgrams
 import tensorflow as tf
-from dataset_tools.preprocess import preprocess
+from dataset_tools.preprocess import preprocess, downsample
 from utils.dirs import create_dirs
 from dataset_tools.utils import read_file
 import json
@@ -17,9 +17,11 @@ _OOV_TOKEN = "<OOV>"
 _OOV_TOKEN_ID = -1
 
 dct, tokenized_docs = preprocess(texts, stem=False)
-_OOV_TOKEN_ID = dct.token2id[_OOV_TOKEN]
 
-frequency = defaultdict(int)
+total_count = sum(dct.dfs.values())
+normalized_frequencies = {k: v / total_count for k, v in dct.dfs.items()}
+
+_OOV_TOKEN_ID = dct.token2id[_OOV_TOKEN]
 
 data = []
 
@@ -35,10 +37,10 @@ tfrecord_path = os.path.join(SAVE_DIR, "train.tfrecord")
 with tf.python_io.TFRecordWriter(tfrecord_path) as writer:
     for idx, doc in enumerate(tokenized_docs):
         id_doc = dct.doc2idx(doc, _OOV_TOKEN_ID)
-        for token_id in id_doc:
-            frequency[token_id] += 1
+        downsampled_doc = downsample(id_doc, normalized_frequencies)
+
         pairs, _ = skipgrams(
-            id_doc,
+            downsampled_doc,
             vocabulary_size=len(dct),
             window_size=5,
             shuffle=True,
@@ -55,9 +57,6 @@ with tf.python_io.TFRecordWriter(tfrecord_path) as writer:
                 writer.write(example.SerializeToString())
 
 
-total_count = sum(frequency.values())
-normalized_frequency = {k: v / total_count for k, v in frequency.items()}
-
 with open("{}/token2idx.json".format(SAVE_DIR), "w") as fp:
     json.dump(dct.token2id, fp)
 
@@ -67,7 +66,7 @@ with open("{}/idx2token.json".format(SAVE_DIR), "w") as fp:
     json.dump(id2token, fp)
 
 with open("{}/freq.json".format(SAVE_DIR), "w") as fp:
-    json.dump(normalized_frequency, fp)
+    json.dump(normalized_frequencies, fp)
 
 with open("{}/meta.json".format(SAVE_DIR), "w") as fp:
     json.dump({
