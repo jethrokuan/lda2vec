@@ -34,15 +34,35 @@ def topic_coherence(lists, services=['ca', 'cp', 'cv', 'npmi', 'uci',
     print("Median: {}".format(np.median(res)))
     return res
 
-topics = [["edu", "space", "com", "information", "available", "mail", "data", "ftp", "pub", "send"],
-["don", "just", "like", "know", "think", "good", "time", "people", "ve", "going"],
-["god", "people", "does", "jesus", "believe", "think", "say", "don", "just", "know"],
-["thanks", "use", "window", "windows", "does", "know", "help", "like", "program", "using"],
-["g9v", "b8f", "a86", "145", "1d9", "pl", "0t", "cx", "34u", "2di"],
-["key", "use", "chip", "encryption", "used", "keys", "clipper", "bit", "bike", "number"],
-["10", "00", "15", "25", "12", "20", "11", "16", "14", "13"],
-["game", "year", "team", "games", "play", "season", "hockey", "league", "players", "win"],
-["people", "government", "mr", "gun", "law", "president", "armenian", "said", "state", "israel"],
-["file", "drive", "card", "disk", "scsi", "dos", "mac", "pc", "memory", "use"]]
+topics = [['creator', 'eat', 'asked', 'maybe', 'name', 'acting', 'rest', 'eyes', 'romans', 'control'],
+['correct', 'say', 'son', 'unfortunate', 'perhaps', 'meat', 'gods', 'sin', 'considerations', 'anyway'],
+['god', 'choices', 'refuse', 'maybe', 'mind', 'death', 'forever', 'friends', 'people', 'grave'],
+['cool', 'nobody', 'whereas', 'teaches', 'doubts', 'also', 'forever', 'worry', 'romans', 'assume'],
+['sea', 'keep', 'specific', 'believe', 'another', 'master', 'fall', 'caused', 'day', 'judge'],
+['fall', 'grave', 'refuse', 'call', 'much', 'peace', 'going', 'though', 'anyway', 'day'],
+['whatever', 'doubts', 'work', 'hand', 'directly', 'concerned', 'paul', 'least', 'jesus', 'sabbath'],
+['eat', 'much', 'known', 'race', 'open', 'knew', 'serve', 'ends', 'choose', 'opinion'],
+['chance', 'human', 'afraid', 'detail', 'music', 'hand', 'ever', 'son', 'considerations', 'content'],
+['human', 'note', 'rest', 'person', 'groups', 'files', 'forever', 'short', 'day', 'others'],
+['guilty', 'ca', 'sea', 'none', 'light', 'else', 'christians', 'many', 'open', 'ever'],
+['master', 'let', 'believed', 'since', 'words', 'may', 'worry', 'work', 'hate', 'lord'],
+['chance', 'drink', 'nobody', 'though', 'near', 'hear', 'considerations', 'kingdom', 'requirement', 'black'],
+['eyes', 'eat', 'talking', 'master', 'therefore', 'may', 'holy', 'death', 'sure', 'words'],
+['requirement', 'directly', 'enough', 'light', 'keeps', 'christ', 'clean', 'mind', 'justice', 'kingdom']]
+
+
+# topics = [
+# ["recently", "used", "dear", "sun", "having", "subject", "comp", "simple", "says", "circuit"],
+# ["question", "use", "problem", "just", "version", "window", "info", "source"],
+# ["like", "new", "article", "com", "christians", "discussion", "dec", "did", "argument", "hp"],
+# ["trying", "think", "window", "yes", "god", "posted", "actually", "write", "wrong", "code"],
+# ["need", "faq", "time", "apr", "archive", "ago", "93", "answer", "probably", "help"],
+# ["looking", "want", "people", "point", "post", "lot", "true", "send", "build", "suggest"],
+# ["ve", "try", "got", "seen", "posting", "motif", "reply", "wi", "look", "heard"],
+# ["don", "know", "read", "sorry", "xt", "really", "say", "yo", "set", "recent"],
+# ["just", "let", "tell", "sure", "right", "come", "idea", "running", "ok", "asked"],
+# ["does", "know", "hello", "good", "deleted", "anybody", "folks", "way", "wondering", "stuff"]
+# ]
+
 
 print(topic_coherence(topics, services=["cv"]))
